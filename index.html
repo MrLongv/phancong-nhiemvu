@@ -542,12 +542,20 @@ async function importExcel(){
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
       const sheet = workbook.Sheets['Nhap_NhanSu'] || workbook.Sheets[workbook.SheetNames[0]];
-      rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      rows = XLSX.utils.sheet_to_json(sheet, {
+  defval: '',
+  raw: false,
+  range: 3   // 🔥 BỎ QUA 3 DÒNG ĐẦU
+});
     }else if(ext === 'csv'){
       const text = await readTextSmart(file);
       const workbook = XLSX.read(text, { type: 'string' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      rows = XLSX.utils.sheet_to_json(sheet, {
+  defval: '',
+  raw: false,
+  range: 3   // 🔥 BỎ QUA 3 DÒNG ĐẦU
+});
     }else{
       alert('Chỉ hỗ trợ .xlsx, .xls hoặc .csv');
       return;
