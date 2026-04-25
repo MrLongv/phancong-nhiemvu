@@ -12,7 +12,6 @@
     button{border:0;border-radius:14px;padding:12px 18px;font-weight:700;cursor:pointer}
     .btn{background:#2563eb;color:white}
     .btn-light{background:#e8eef8;color:#0f172a}
-    .btn-danger{background:#ef4444;color:white}
     .wrap{max-width:1150px;margin:24px auto;padding:0 12px}
     .card{background:white;border:1px solid #dbe3ef;border-radius:18px;padding:20px;box-shadow:0 12px 30px rgba(15,23,42,.06)}
     .tabs{display:flex;gap:10px;margin-bottom:14px}
@@ -39,11 +38,37 @@
     .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
     .modal-box{background:white;width:min(850px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.25)}
     .modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:16px}
-    .detail-block{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:10px 0 16px;line-height:1.55;white-space:normal}
+    .detail-block{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:10px 0 16px;line-height:1.55}
     .detail-title{font-size:15px;margin:14px 0 8px;color:#0f172a}
+
     @media(max-width:900px){
       .grid,.grid2,.searchbar{grid-template-columns:1fr}
       header{height:auto;gap:10px;align-items:flex-start;flex-direction:column;padding:14px}
+    }
+
+    @media(max-width:700px){
+      .wrap{margin:12px auto;padding:0 10px}
+      header{position:sticky;top:0;z-index:50}
+      .card{padding:16px;border-radius:16px}
+      .tabs{position:sticky;top:82px;z-index:40;background:#f3f6fb;padding:8px 0}
+      .searchbar{grid-template-columns:1fr;gap:10px}
+      .searchbar input,.searchbar select,.searchbar button{height:48px;font-size:16px}
+
+      table,thead,tbody,tr,th,td{display:block}
+      thead{display:none}
+      tbody tr{background:#fff;border:1px solid #dbe3ef;border-radius:16px;padding:12px;margin:12px 0;box-shadow:0 8px 20px rgba(15,23,42,.06)}
+      td{border:0;padding:5px 0}
+      td:nth-child(1)::before{content:"Mã NV: ";font-weight:700;color:#64748b}
+      td:nth-child(3)::before{content:"Bộ phận: ";font-weight:700;color:#64748b}
+      td:nth-child(4)::before{content:"Tổ: ";font-weight:700;color:#64748b}
+      td:nth-child(5)::before{content:"Chức vụ: ";font-weight:700;color:#64748b}
+      td:nth-child(2){font-size:18px;padding-bottom:8px}
+      td:nth-child(2) .name-btn{font-size:18px}
+      td:nth-child(6){padding-top:10px}
+      td:nth-child(6) .small{width:100%;height:42px}
+
+      .modal-box{width:100%;max-height:88vh;padding:18px;border-radius:18px}
+      .modal-head{align-items:flex-start}
     }
   </style>
 </head>
@@ -232,6 +257,10 @@ let teams = [];
 
 function $(id){ return document.getElementById(id); }
 
+function canEdit(){
+  return currentUser && ['admin', 'ns'].includes(currentUser.role);
+}
+
 function showLogin(){
   $('loginPage').classList.remove('hidden');
   $('appPage').classList.add('hidden');
@@ -241,6 +270,13 @@ function showApp(){
   $('loginPage').classList.add('hidden');
   $('appPage').classList.remove('hidden');
   $('userInfo').textContent = `${currentUser.full_name || currentUser.username} (${currentUser.role})`;
+
+  $('tabForm').style.display = canEdit() ? 'inline-block' : 'none';
+
+  if(!canEdit()){
+    showTab('search');
+  }
+
   initData();
 }
 
@@ -289,6 +325,10 @@ function loadMe(){
 }
 
 function showTab(tab){
+  if(tab === 'form' && !canEdit()){
+    tab = 'search';
+  }
+
   $('tabSearch').classList.toggle('active', tab === 'search');
   $('tabForm').classList.toggle('active', tab === 'form');
   $('searchSection').classList.toggle('hidden', tab !== 'search');
@@ -359,7 +399,11 @@ async function loadEmployees(){
         <td>${escapeHtml(e.team_name || e.team || '')}</td>
         <td>${escapeHtml(e.position || '')}</td>
         <td>
-          <button class="btn-light small" onclick='editEmployee(${safeObj(e)})'>Sửa</button>
+          ${
+            canEdit()
+              ? `<button class="btn-light small" onclick='editEmployee(${safeObj(e)})'>Sửa</button>`
+              : `<button class="btn-light small" onclick='showDetail(${safeObj(e)})'>Xem nhiệm vụ</button>`
+          }
         </td>
       </tr>
     `).join('');
@@ -370,6 +414,11 @@ async function loadEmployees(){
 }
 
 function editEmployee(e){
+  if(!canEdit()){
+    showDetail(e);
+    return;
+  }
+
   showTab('form');
 
   $('empId').value = e.id || '';
@@ -400,6 +449,11 @@ function clearForm(){
 }
 
 async function saveEmployee(){
+  if(!canEdit()){
+    alert('Tài khoản này không có quyền chỉnh sửa');
+    return;
+  }
+
   const payload = {
     id: $('empId').value || null,
     emp_code: $('empCode').value.trim(),
