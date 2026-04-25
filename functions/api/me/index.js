@@ -1,4 +1,4 @@
-import { json, requireUser } from '../_utils.js';
+import { json, requireUser } from '../../_utils.js';
 export async function onRequestGet(context) {
   const user = await requireUser(context);
   if (!user) return json({ user: null }, 401);
