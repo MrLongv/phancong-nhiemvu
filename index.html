@@ -5,83 +5,407 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Phân công nhiệm vụ nhân sự</title>
   <style>
-    :root{--bg:#f3f6fb;--card:#fff;--text:#0f172a;--muted:#64748b;--pri:#2563eb;--line:#e2e8f0;--danger:#dc2626;--ok:#16a34a}
-    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-    .top{height:60px;background:#0f172a;color:white;display:flex;align-items:center;justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:10}
-    .brand{font-weight:800}.userbar{display:flex;gap:10px;align-items:center;font-size:14px}.btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--pri);color:white}.btn.ghost{background:#e2e8f0;color:#0f172a}.btn.danger{background:var(--danger)}
-    .wrap{max-width:1180px;margin:22px auto;padding:0 16px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,.06);padding:18px;margin-bottom:16px}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.col-3{grid-column:span 3}.col-4{grid-column:span 4}.col-6{grid-column:span 6}.col-12{grid-column:span 12}@media(max-width:800px){.col-3,.col-4,.col-6{grid-column:span 12}}
-    label{font-size:12px;color:var(--muted);font-weight:700;display:block;margin-bottom:6px}input,select,textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;background:white}textarea{min-height:92px;resize:vertical}.search{font-size:18px;padding:15px;border-radius:16px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tab{padding:10px 14px;border-radius:999px;background:#e2e8f0;cursor:pointer;font-weight:700}.tab.active{background:#dbeafe;color:#1d4ed8}
-    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px;border-bottom:1px solid var(--line);font-size:14px}th{color:var(--muted);font-size:12px;text-transform:uppercase}.pill{display:inline-flex;padding:4px 10px;border-radius:999px;background:#e2e8f0;font-size:12px;font-weight:700}.hidden{display:none!important}.login{max-width:420px;margin:80px auto}.title{margin:0 0 4px;font-size:24px}.muted{color:var(--muted)}.taskbox{white-space:pre-line;background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:12px;min-height:48px}.actions{display:flex;gap:8px;flex-wrap:wrap}.right{display:flex;justify-content:flex-end;gap:8px}.notice{padding:10px 12px;border-radius:12px;background:#eff6ff;color:#1d4ed8;font-weight:700;margin-top:10px}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:#f3f6fb;color:#0f172a}
+    header{height:56px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-weight:700}
+    header .right{display:flex;gap:12px;align-items:center;font-weight:400}
+    button{border:0;border-radius:14px;padding:12px 18px;font-weight:700;cursor:pointer}
+    .btn{background:#2563eb;color:white}
+    .btn-light{background:#e8eef8;color:#0f172a}
+    .btn-danger{background:#ef4444;color:white}
+    .wrap{max-width:1150px;margin:24px auto;padding:0 12px}
+    .card{background:white;border:1px solid #dbe3ef;border-radius:18px;padding:20px;box-shadow:0 12px 30px rgba(15,23,42,.06)}
+    .tabs{display:flex;gap:10px;margin-bottom:14px}
+    .tab{background:#e8eef8;color:#0f172a}
+    .tab.active{background:#dbeafe;color:#1d4ed8}
+    input,select,textarea{width:100%;border:1px solid #d6deeb;border-radius:14px;padding:13px 14px;font-size:15px;background:#fff}
+    textarea{min-height:90px;resize:vertical}
+    label{font-size:13px;font-weight:700;color:#475569;margin-bottom:6px;display:block}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .searchbar{display:grid;grid-template-columns:1.3fr .65fr .65fr;gap:12px;margin:18px 0}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border-bottom:1px solid #e2e8f0;padding:12px;text-align:left;font-size:14px}
+    th{font-size:12px;color:#64748b}
+    .login-page{min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .login-box{width:420px;background:white;border-radius:18px;padding:24px;box-shadow:0 20px 50px rgba(15,23,42,.12)}
+    .hidden{display:none!important}
+    .muted{color:#64748b}
+    .demo{background:#eef4ff;color:#1e40af;border-radius:12px;padding:12px;font-weight:700;margin-top:12px}
+    .actions{display:flex;gap:8px}
+    .small{padding:8px 12px;border-radius:10px;font-size:13px}
+    @media(max-width:900px){
+      .grid,.grid2,.searchbar{grid-template-columns:1fr}
+      header{height:auto;gap:10px;align-items:flex-start;flex-direction:column;padding:14px}
+    }
   </style>
 </head>
+
 <body>
-  <div id="loginBox" class="login card">
-    <h1 class="title">Đăng nhập</h1><p class="muted">Hệ thống tra cứu nhiệm vụ nhân sự</p>
-    <label>Tài khoản</label><input id="loginUser" value="admin">
-    <label style="margin-top:10px">Mật khẩu</label><input id="loginPass" type="password" value="123456">
-    <button class="btn" style="width:100%;margin-top:16px" onclick="login()">Đăng nhập</button>
-    <div class="notice">Demo: admin / ns1 / ns2 / gd / ql_hcqt / ql_xn1 — mật khẩu 123456</div>
-  </div>
+  <div id="loginPage" class="login-page">
+    <div class="login-box">
+      <h2>Đăng nhập</h2>
+      <p class="muted">Hệ thống tra cứu nhiệm vụ nhân sự</p>
 
-  <div id="app" class="hidden">
-    <div class="top"><div class="brand">📋 Phân công nhiệm vụ nhân sự</div><div class="userbar"><span id="who"></span><button class="btn ghost" onclick="logout()">Đăng xuất</button></div></div>
-    <div class="wrap">
-      <div class="tabs"><div class="tab active" onclick="showTab('search')">Tra cứu</div><div class="tab" onclick="showTab('add')">Thêm nhân viên</div></div>
+      <label>Tài khoản</label>
+      <input id="loginUsername" value="admin" />
 
-      <section id="tabSearch" class="card">
-        <h2 class="title">Tra cứu nhân viên</h2><p class="muted">Nhập mã số hoặc tên, có thể lọc theo phòng ban.</p>
-        <div class="grid"><div class="col-6"><input id="q" class="search" placeholder="Nhập mã số hoặc họ tên..." oninput="debouncedSearch()"></div><div class="col-3"><select id="filterDep" onchange="searchEmployees()"></select></div><div class="col-3"><button class="btn" style="width:100%;height:52px" onclick="searchEmployees()">Tìm kiếm</button></div></div>
-        <div style="overflow:auto;margin-top:14px"><table><thead><tr><th>Mã NV</th><th>Họ tên</th><th>Bộ phận</th><th>Tổ</th><th>Chức vụ</th><th>Thao tác</th></tr></thead><tbody id="tbody"></tbody></table></div>
-      </section>
+      <br><br>
 
-      <section id="detail" class="card hidden"></section>
+      <label>Mật khẩu</label>
+      <input id="loginPassword" type="password" value="123456" />
 
-      <section id="tabAdd" class="card hidden">
-        <h2 class="title">Thêm / sửa hồ sơ</h2><p class="muted">Giai đoạn 1: tạo nhân viên và nhiệm vụ cơ bản.</p>
-        <form id="empForm" onsubmit="saveEmployee(event)">
-          <input type="hidden" id="empId">
-          <div class="grid">
-            <div class="col-3"><label>Mã số</label><input id="emp_code" required></div>
-            <div class="col-3"><label>Họ tên</label><input id="full_name" required></div>
-            <div class="col-3"><label>Chức vụ</label><input id="position"></div>
-            <div class="col-3"><label>Trạng thái</label><select id="status"><option value="dang_lam">Đang làm</option><option value="tam_nghi">Tạm nghỉ</option><option value="nghi_viec">Nghỉ việc</option></select></div>
-            <div class="col-3"><label>Phòng ban</label><select id="department_id" onchange="loadTeams(this.value,'team_id')"></select></div>
-            <div class="col-3"><label>Tổ / bộ phận</label><select id="team_id"></select></div>
-            <div class="col-3"><label>Người quản lý</label><input id="manager_name"></div>
-            <div class="col-3"><label>Khu vực</label><input id="work_area"></div>
-            <div class="col-6"><label>Nhiệm vụ chính</label><textarea id="main_tasks"></textarea></div>
-            <div class="col-6"><label>Nhiệm vụ phụ</label><textarea id="sub_tasks"></textarea></div>
-            <div class="col-6"><label>Công việc hằng ngày</label><textarea id="daily_tasks"></textarea></div>
-            <div class="col-6"><label>Công việc định kỳ</label><textarea id="periodic_tasks"></textarea></div>
-            <div class="col-6"><label>Tài liệu liên quan</label><textarea id="related_docs"></textarea></div>
-            <div class="col-6"><label>Ghi chú nhân sự</label><textarea id="note"></textarea></div>
-            <div class="col-12 right"><button type="button" class="btn ghost" onclick="resetForm()">Làm mới</button><button class="btn">Lưu hồ sơ</button></div>
-          </div>
-        </form>
-      </section>
+      <br><br>
+
+      <button class="btn" style="width:100%" onclick="login()">Đăng nhập</button>
+
+      <div class="demo">
+        Demo: admin / ns1 / ns2 / gd / ql_hcqt / ql_xn1<br>
+        mật khẩu 123456
+      </div>
     </div>
   </div>
+
+  <div id="appPage" class="hidden">
+    <header>
+      <div>📋 Phân công nhiệm vụ nhân sự</div>
+      <div class="right">
+        <span id="userInfo"></span>
+        <button class="btn-light" onclick="logout()">Đăng xuất</button>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="tabs">
+        <button id="tabSearch" class="tab active" onclick="showTab('search')">Tra cứu</button>
+        <button id="tabForm" class="tab" onclick="showTab('form')">Thêm nhân viên</button>
+      </div>
+
+      <section id="searchSection" class="card">
+        <h2>Tra cứu nhân viên</h2>
+        <p class="muted">Nhập mã số hoặc tên, có thể lọc theo phòng ban.</p>
+
+        <div class="searchbar">
+          <input id="searchKeyword" placeholder="Nhập mã số hoặc họ tên..." />
+          <select id="searchDepartment"></select>
+          <button class="btn" onclick="loadEmployees()">Tìm kiếm</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>MÃ NV</th>
+              <th>HỌ TÊN</th>
+              <th>BỘ PHẬN</th>
+              <th>TỔ</th>
+              <th>CHỨC VỤ</th>
+              <th>THAO TÁC</th>
+            </tr>
+          </thead>
+          <tbody id="employeeTbody"></tbody>
+        </table>
+      </section>
+
+      <section id="formSection" class="card hidden">
+        <h2>Thêm / sửa hồ sơ</h2>
+        <p class="muted">Giai đoạn 1: tạo nhân viên và nhiệm vụ cơ bản.</p>
+
+        <input type="hidden" id="empId" />
+
+        <div class="grid">
+          <div>
+            <label>Mã số</label>
+            <input id="empCode" />
+          </div>
+          <div>
+            <label>Họ tên</label>
+            <input id="fullName" />
+          </div>
+          <div>
+            <label>Chức vụ</label>
+            <input id="position" />
+          </div>
+          <div>
+            <label>Trạng thái</label>
+            <select id="status">
+              <option value="dang_lam">Đang làm</option>
+              <option value="tam_nghi">Tạm nghỉ</option>
+              <option value="nghi_viec">Nghỉ việc</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Phòng ban</label>
+            <select id="departmentId" onchange="loadTeams(this.value)"></select>
+          </div>
+          <div>
+            <label>Tổ / bộ phận</label>
+            <select id="teamId"></select>
+          </div>
+          <div>
+            <label>Người quản lý</label>
+            <input id="managerName" />
+          </div>
+          <div>
+            <label>Khu vực</label>
+            <input id="workArea" />
+          </div>
+        </div>
+
+        <br>
+
+        <div class="grid2">
+          <div>
+            <label>Nhiệm vụ chính</label>
+            <textarea id="mainTasks"></textarea>
+          </div>
+          <div>
+            <label>Nhiệm vụ phụ</label>
+            <textarea id="subTasks"></textarea>
+          </div>
+          <div>
+            <label>Công việc hằng ngày</label>
+            <textarea id="dailyTasks"></textarea>
+          </div>
+          <div>
+            <label>Công việc định kỳ</label>
+            <textarea id="periodicTasks"></textarea>
+          </div>
+        </div>
+
+        <br>
+
+        <label>Tài liệu / quy trình liên quan</label>
+        <textarea id="relatedDocs"></textarea>
+
+        <br><br>
+
+        <div class="actions">
+          <button class="btn" onclick="saveEmployee()">Lưu hồ sơ</button>
+          <button class="btn-light" onclick="clearForm()">Làm mới</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
 <script>
-let me=null, deps=[], timer=null;
-const $=id=>document.getElementById(id);
-async function api(url,opt={}){const r=await fetch(url,{headers:{'content-type':'application/json'},...opt}); const data=await r.json().catch(()=>({})); if(!r.ok) throw new Error(data.error||'Lỗi API'); return data;}
-async function boot(){try{const r=await api('/api/me'); me=r.user; showApp();}catch{}}
-function showApp(){ $('loginBox').classList.add('hidden'); $('app').classList.remove('hidden'); $('who').textContent=`${me.full_name||me.username} (${me.role})`; loadDepartments().then(searchEmployees); }
-async function login(){try{const r=await api('/api/auth/login',{method:'POST',body:JSON.stringify({username:$('loginUser').value,password:$('loginPass').value})}); me=r.user; showApp();}catch(e){alert(e.message)}}
-async function logout(){await api('/api/logout',{method:'POST'}).catch(()=>{}); location.reload();}
-function showTab(t){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); event.target.classList.add('active'); $('tabSearch').classList.toggle('hidden',t!=='search'); $('tabAdd').classList.toggle('hidden',t!=='add'); $('detail').classList.add('hidden');}
-async function loadDepartments(){const r=await api('/api/departments'); deps=r.departments; const opts='<option value="">Tất cả phòng ban</option>'+deps.map(d=>`<option value="${d.id}">${d.name}</option>`).join(''); $('filterDep').innerHTML=opts; $('department_id').innerHTML=deps.map(d=>`<option value="${d.id}">${d.name}</option>`).join(''); await loadTeams($('department_id').value,'team_id');}
-async function loadTeams(dep, target){const r=await api('/api/teams?department_id='+(dep||'')); $(target).innerHTML='<option value="">Không chọn</option>'+r.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');}
-function debouncedSearch(){clearTimeout(timer); timer=setTimeout(searchEmployees,300)}
-async function searchEmployees(){const q=encodeURIComponent($('q').value||''); const dep=$('filterDep').value; const r=await api(`/api/employees?q=${q}&department_id=${dep}`); $('tbody').innerHTML=r.employees.map(e=>`<tr><td><b>${e.emp_code}</b></td><td>${e.full_name}</td><td>${e.department_name||''}</td><td>${e.team_name||''}</td><td>${e.position||''}</td><td class="actions"><button class="btn ghost" onclick="viewEmp(${e.id})">Nhiệm vụ</button><button class="btn" onclick="editEmp(${e.id})">Sửa</button></td></tr>`).join('')||'<tr><td colspan="6">Không có dữ liệu</td></tr>';}
-async function viewEmp(id){const {employee:e}=await api('/api/employees/'+id); $('detail').classList.remove('hidden'); $('detail').innerHTML=`<h2 class="title">${e.full_name} <span class="pill">${e.emp_code}</span></h2><p class="muted">${e.department_name||''} / ${e.team_name||''} — ${e.position||''}</p><div class="grid"><div class="col-3"><label>Trạng thái</label><div class="taskbox">${e.status}</div></div><div class="col-3"><label>Người quản lý</label><div class="taskbox">${e.manager_name||''}</div></div><div class="col-6"><label>Khu vực</label><div class="taskbox">${e.work_area||''}</div></div><div class="col-6"><label>Nhiệm vụ chính</label><div class="taskbox">${e.main_tasks||''}</div></div><div class="col-6"><label>Nhiệm vụ phụ</label><div class="taskbox">${e.sub_tasks||''}</div></div><div class="col-6"><label>Công việc hằng ngày</label><div class="taskbox">${e.daily_tasks||''}</div></div><div class="col-6"><label>Công việc định kỳ</label><div class="taskbox">${e.periodic_tasks||''}</div></div><div class="col-12 right"><button class="btn" onclick="editEmp(${e.id})">Sửa hồ sơ</button></div></div>`; window.scrollTo({top:$('detail').offsetTop-70,behavior:'smooth'});}
-async function editEmp(id){const {employee:e}=await api('/api/employees/'+id); showTabManual('add'); ['empId','emp_code','full_name','position','status','department_id','manager_name','work_area','main_tasks','sub_tasks','daily_tasks','periodic_tasks','related_docs','note'].forEach(k=>{if($(k)) $(k).value=e[k]??(k==='empId'?e.id:'')}); $('empId').value=e.id; await loadTeams(e.department_id,'team_id'); $('team_id').value=e.team_id||''; window.scrollTo({top:0,behavior:'smooth'});}
-function showTabManual(t){document.querySelectorAll('.tab').forEach((x,i)=>x.classList.toggle('active',(t==='search'&&i===0)||(t==='add'&&i===1))); $('tabSearch').classList.toggle('hidden',t!=='search'); $('tabAdd').classList.toggle('hidden',t!=='add'); $('detail').classList.add('hidden');}
-function formData(){return {emp_code:$('emp_code').value,full_name:$('full_name').value,position:$('position').value,status:$('status').value,department_id:Number($('department_id').value)||null,team_id:Number($('team_id').value)||null,manager_name:$('manager_name').value,work_area:$('work_area').value,main_tasks:$('main_tasks').value,sub_tasks:$('sub_tasks').value,daily_tasks:$('daily_tasks').value,periodic_tasks:$('periodic_tasks').value,related_docs:$('related_docs').value,note:$('note').value}}
-async function saveEmployee(ev){ev.preventDefault(); const id=$('empId').value; try{if(id) await api('/api/employees/'+id,{method:'PUT',body:JSON.stringify(formData())}); else await api('/api/employees',{method:'POST',body:JSON.stringify(formData())}); alert('Đã lưu'); resetForm(); showTabManual('search'); searchEmployees();}catch(e){alert(e.message)}}
-function resetForm(){$('empForm').reset(); $('empId').value=''; loadTeams($('department_id').value,'team_id');}
-boot();
+let currentUser = null;
+let departments = [];
+let teams = [];
+
+function $(id){ return document.getElementById(id); }
+
+function showLogin(){
+  $('loginPage').classList.remove('hidden');
+  $('appPage').classList.add('hidden');
+}
+
+function showApp(){
+  $('loginPage').classList.add('hidden');
+  $('appPage').classList.remove('hidden');
+  $('userInfo').textContent = `${currentUser.full_name || currentUser.username} (${currentUser.role})`;
+  initData();
+}
+
+async function login(){
+  const username = $('loginUsername').value.trim();
+  const password = $('loginPassword').value.trim();
+
+  try{
+    const res = await fetch('/api/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username,password})
+    });
+
+    const data = await res.json();
+
+    if(!res.ok){
+      alert(data.error || data.message || 'Sai tài khoản hoặc mật khẩu');
+      return;
+    }
+
+    currentUser = data.user;
+    localStorage.setItem('pc_user', JSON.stringify(currentUser));
+    showApp();
+
+  }catch(err){
+    alert('Lỗi API: ' + err.message);
+  }
+}
+
+async function logout(){
+  localStorage.removeItem('pc_user');
+  try{ await fetch('/api/logout'); }catch(e){}
+  currentUser = null;
+  showLogin();
+}
+
+function loadMe(){
+  const saved = localStorage.getItem('pc_user');
+  if(saved){
+    currentUser = JSON.parse(saved);
+    showApp();
+  }else{
+    showLogin();
+  }
+}
+
+function showTab(tab){
+  $('tabSearch').classList.toggle('active', tab === 'search');
+  $('tabForm').classList.toggle('active', tab === 'form');
+  $('searchSection').classList.toggle('hidden', tab !== 'search');
+  $('formSection').classList.toggle('hidden', tab !== 'form');
+}
+
+async function initData(){
+  await loadDepartments();
+  await loadEmployees();
+}
+
+async function loadDepartments(){
+  const res = await fetch('/api/departments');
+  departments = await res.json();
+
+  const opts = ['<option value="">Tất cả phòng ban</option>']
+    .concat(departments.map(d => `<option value="${d.id}">${d.name}</option>`))
+    .join('');
+
+  $('searchDepartment').innerHTML = opts;
+  $('departmentId').innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+    departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+}
+
+async function loadTeams(departmentId){
+  $('teamId').innerHTML = '<option value="">-- Chọn tổ / bộ phận --</option>';
+
+  if(!departmentId) return;
+
+  const res = await fetch('/api/teams?department_id=' + encodeURIComponent(departmentId));
+  teams = await res.json();
+
+  $('teamId').innerHTML = '<option value="">-- Chọn tổ / bộ phận --</option>' +
+    teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+async function loadEmployees(){
+  const keyword = $('searchKeyword').value.trim();
+  const departmentId = $('searchDepartment').value;
+
+  const params = new URLSearchParams();
+  if(keyword) params.set('q', keyword);
+  if(departmentId) params.set('department_id', departmentId);
+
+  try{
+    const res = await fetch('/api/employees?' + params.toString());
+    const data = await res.json();
+
+    if(!Array.isArray(data)){
+      $('employeeTbody').innerHTML = `<tr><td colspan="6">Chưa có dữ liệu hoặc API chưa đúng.</td></tr>`;
+      return;
+    }
+
+    if(data.length === 0){
+      $('employeeTbody').innerHTML = `<tr><td colspan="6">Chưa có nhân viên.</td></tr>`;
+      return;
+    }
+
+    $('employeeTbody').innerHTML = data.map(e => `
+      <tr>
+        <td>${e.emp_code || ''}</td>
+        <td><b>${e.full_name || ''}</b></td>
+        <td>${e.department_name || e.department || ''}</td>
+        <td>${e.team_name || e.team || ''}</td>
+        <td>${e.position || ''}</td>
+        <td>
+          <button class="btn-light small" onclick='editEmployee(${JSON.stringify(e).replaceAll("'", "&apos;")})'>Sửa</button>
+        </td>
+      </tr>
+    `).join('');
+
+  }catch(err){
+    $('employeeTbody').innerHTML = `<tr><td colspan="6">Lỗi tải nhân viên: ${err.message}</td></tr>`;
+  }
+}
+
+function editEmployee(e){
+  showTab('form');
+
+  $('empId').value = e.id || '';
+  $('empCode').value = e.emp_code || '';
+  $('fullName').value = e.full_name || '';
+  $('position').value = e.position || '';
+  $('status').value = e.status || 'dang_lam';
+  $('departmentId').value = e.department_id || '';
+  $('managerName').value = e.manager_name || '';
+  $('workArea').value = e.work_area || '';
+  $('mainTasks').value = e.main_tasks || '';
+  $('subTasks').value = e.sub_tasks || '';
+  $('dailyTasks').value = e.daily_tasks || '';
+  $('periodicTasks').value = e.periodic_tasks || '';
+  $('relatedDocs').value = e.related_docs || '';
+
+  loadTeams(e.department_id).then(() => {
+    $('teamId').value = e.team_id || '';
+  });
+}
+
+function clearForm(){
+  ['empId','empCode','fullName','position','managerName','workArea','mainTasks','subTasks','dailyTasks','periodicTasks','relatedDocs']
+    .forEach(id => $(id).value = '');
+  $('status').value = 'dang_lam';
+  $('departmentId').value = '';
+  $('teamId').innerHTML = '<option value="">-- Chọn tổ / bộ phận --</option>';
+}
+
+async function saveEmployee(){
+  const payload = {
+    id: $('empId').value || null,
+    emp_code: $('empCode').value.trim(),
+    full_name: $('fullName').value.trim(),
+    position: $('position').value.trim(),
+    status: $('status').value,
+    department_id: $('departmentId').value || null,
+    team_id: $('teamId').value || null,
+    manager_name: $('managerName').value.trim(),
+    work_area: $('workArea').value.trim(),
+    main_tasks: $('mainTasks').value.trim(),
+    sub_tasks: $('subTasks').value.trim(),
+    daily_tasks: $('dailyTasks').value.trim(),
+    periodic_tasks: $('periodicTasks').value.trim(),
+    related_docs: $('relatedDocs').value.trim()
+  };
+
+  if(!payload.emp_code || !payload.full_name){
+    alert('Vui lòng nhập mã số và họ tên');
+    return;
+  }
+
+  try{
+    const res = await fetch('/api/employees', {
+      method: payload.id ? 'PUT' : 'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if(!res.ok){
+      alert(data.error || data.message || 'Không lưu được');
+      return;
+    }
+
+    alert('Đã lưu hồ sơ');
+    clearForm();
+    showTab('search');
+    loadEmployees();
+
+  }catch(err){
+    alert('Lỗi lưu hồ sơ: ' + err.message);
+  }
+}
+
+loadMe();
 </script>
 </body>
 </html>
