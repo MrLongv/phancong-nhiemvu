@@ -8,10 +8,17 @@ export async function onRequestGet({ request, env }) {
     SELECT 
       e.*,
       d.name AS department_name,
-      t.name AS team_name
+      t.name AS team_name,
+      a.work_area,
+      a.main_tasks,
+      a.sub_tasks,
+      a.daily_tasks,
+      a.periodic_tasks,
+      a.related_docs
     FROM employees e
     LEFT JOIN departments d ON e.department_id = d.id
     LEFT JOIN teams t ON e.team_id = t.id
+    LEFT JOIN assignments a ON a.employee_id = e.id
     WHERE 1=1
   `;
 
@@ -30,7 +37,6 @@ export async function onRequestGet({ request, env }) {
   sql += ` ORDER BY e.id DESC`;
 
   const { results } = await env.DB.prepare(sql).bind(...params).all();
-
   return Response.json(results || []);
 }
 
@@ -96,25 +102,45 @@ export async function onRequestPut({ request, env }) {
     data.id
   ).run();
 
-  await env.DB.prepare(`
-    UPDATE assignments SET
-      work_area = ?,
-      main_tasks = ?,
-      sub_tasks = ?,
-      daily_tasks = ?,
-      periodic_tasks = ?,
-      related_docs = ?,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE employee_id = ?
-  `).bind(
-    data.work_area || '',
-    data.main_tasks || '',
-    data.sub_tasks || '',
-    data.daily_tasks || '',
-    data.periodic_tasks || '',
-    data.related_docs || '',
-    data.id
-  ).run();
+  const existed = await env.DB.prepare(`
+    SELECT id FROM assignments WHERE employee_id = ? LIMIT 1
+  `).bind(data.id).first();
+
+  if (existed) {
+    await env.DB.prepare(`
+      UPDATE assignments SET
+        work_area = ?,
+        main_tasks = ?,
+        sub_tasks = ?,
+        daily_tasks = ?,
+        periodic_tasks = ?,
+        related_docs = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE employee_id = ?
+    `).bind(
+      data.work_area || '',
+      data.main_tasks || '',
+      data.sub_tasks || '',
+      data.daily_tasks || '',
+      data.periodic_tasks || '',
+      data.related_docs || '',
+      data.id
+    ).run();
+  } else {
+    await env.DB.prepare(`
+      INSERT INTO assignments
+      (employee_id, work_area, main_tasks, sub_tasks, daily_tasks, periodic_tasks, related_docs)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      data.id,
+      data.work_area || '',
+      data.main_tasks || '',
+      data.sub_tasks || '',
+      data.daily_tasks || '',
+      data.periodic_tasks || '',
+      data.related_docs || ''
+    ).run();
+  }
 
   return Response.json({ ok: true });
 }
