@@ -34,6 +34,13 @@
     .demo{background:#eef4ff;color:#1e40af;border-radius:12px;padding:12px;font-weight:700;margin-top:12px}
     .actions{display:flex;gap:8px}
     .small{padding:8px 12px;border-radius:10px;font-size:13px}
+    .name-btn{background:transparent;color:#1d4ed8;padding:0;border-radius:0;font-weight:700;text-align:left}
+    .name-btn:hover{text-decoration:underline}
+    .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
+    .modal-box{background:white;width:min(850px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.25)}
+    .modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:16px}
+    .detail-block{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:10px 0 16px;line-height:1.55;white-space:normal}
+    .detail-title{font-size:15px;margin:14px 0 8px;color:#0f172a}
     @media(max-width:900px){
       .grid,.grid2,.searchbar{grid-template-columns:1fr}
       header{height:auto;gap:10px;align-items:flex-start;flex-direction:column;padding:14px}
@@ -108,7 +115,7 @@
 
       <section id="formSection" class="card hidden">
         <h2>Thêm / sửa hồ sơ</h2>
-        <p class="muted">Giai đoạn 1: tạo nhân viên và nhiệm vụ cơ bản.</p>
+        <p class="muted">Tạo nhân viên và nhiệm vụ cơ bản.</p>
 
         <input type="hidden" id="empId" />
 
@@ -186,6 +193,36 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="detailModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <h2 id="detailName" style="margin:0">Chi tiết nhiệm vụ</h2>
+          <p id="detailMeta" class="muted" style="margin:8px 0 0"></p>
+        </div>
+        <button class="btn-light" onclick="closeDetail()">Đóng</button>
+      </div>
+
+      <h3 class="detail-title">Khu vực</h3>
+      <div id="detailWorkArea" class="detail-block"></div>
+
+      <h3 class="detail-title">Nhiệm vụ chính</h3>
+      <div id="detailMainTasks" class="detail-block"></div>
+
+      <h3 class="detail-title">Nhiệm vụ phụ</h3>
+      <div id="detailSubTasks" class="detail-block"></div>
+
+      <h3 class="detail-title">Công việc hằng ngày</h3>
+      <div id="detailDailyTasks" class="detail-block"></div>
+
+      <h3 class="detail-title">Công việc định kỳ</h3>
+      <div id="detailPeriodicTasks" class="detail-block"></div>
+
+      <h3 class="detail-title">Tài liệu / quy trình liên quan</h3>
+      <div id="detailRelatedDocs" class="detail-block"></div>
+    </div>
   </div>
 
 <script>
@@ -312,19 +349,23 @@ async function loadEmployees(){
 
     $('employeeTbody').innerHTML = data.map(e => `
       <tr>
-        <td>${e.emp_code || ''}</td>
-        <td><b>${e.full_name || ''}</b></td>
-        <td>${e.department_name || e.department || ''}</td>
-        <td>${e.team_name || e.team || ''}</td>
-        <td>${e.position || ''}</td>
+        <td>${escapeHtml(e.emp_code || '')}</td>
         <td>
-          <button class="btn-light small" onclick='editEmployee(${JSON.stringify(e).replaceAll("'", "&apos;")})'>Sửa</button>
+          <button class="name-btn" onclick='showDetail(${safeObj(e)})'>
+            ${escapeHtml(e.full_name || '')}
+          </button>
+        </td>
+        <td>${escapeHtml(e.department_name || e.department || '')}</td>
+        <td>${escapeHtml(e.team_name || e.team || '')}</td>
+        <td>${escapeHtml(e.position || '')}</td>
+        <td>
+          <button class="btn-light small" onclick='editEmployee(${safeObj(e)})'>Sửa</button>
         </td>
       </tr>
     `).join('');
 
   }catch(err){
-    $('employeeTbody').innerHTML = `<tr><td colspan="6">Lỗi tải nhân viên: ${err.message}</td></tr>`;
+    $('employeeTbody').innerHTML = `<tr><td colspan="6">Lỗi tải nhân viên: ${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -404,6 +445,55 @@ async function saveEmployee(){
     alert('Lỗi lưu hồ sơ: ' + err.message);
   }
 }
+
+function escapeHtml(v){
+  return String(v ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+
+function safeObj(obj){
+  return JSON.stringify(obj)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll("'","&#039;");
+}
+
+function fmtText(v){
+  if(!v) return '<span class="muted">Chưa cập nhật</span>';
+  return escapeHtml(v).replaceAll('\n','<br>');
+}
+
+function showDetail(e){
+  $('detailName').textContent = e.full_name || 'Chi tiết nhiệm vụ';
+  $('detailMeta').textContent =
+    `${e.emp_code || ''} • ${e.department_name || ''}${e.team_name ? ' / ' + e.team_name : ''} • ${e.position || ''}`;
+
+  $('detailWorkArea').innerHTML = fmtText(e.work_area);
+  $('detailMainTasks').innerHTML = fmtText(e.main_tasks);
+  $('detailSubTasks').innerHTML = fmtText(e.sub_tasks);
+  $('detailDailyTasks').innerHTML = fmtText(e.daily_tasks);
+  $('detailPeriodicTasks').innerHTML = fmtText(e.periodic_tasks);
+  $('detailRelatedDocs').innerHTML = fmtText(e.related_docs);
+
+  $('detailModal').classList.remove('hidden');
+}
+
+function closeDetail(){
+  $('detailModal').classList.add('hidden');
+}
+
+$('detailModal').addEventListener('click', function(e){
+  if(e.target === this) closeDetail();
+});
+
+$('searchKeyword').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') loadEmployees();
+});
 
 loadMe();
 </script>
