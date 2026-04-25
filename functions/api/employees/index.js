@@ -1,4 +1,4 @@
-import { json, requireUser, canManageAll, log } from '../_utils.js';
+import { json, requireUser, canManageAll, log } from '../../_utils.js';
 export async function onRequestGet(context) {
   const user = await requireUser(context); if (!user) return json({ error: 'Chưa đăng nhập' }, 401);
   const url = new URL(context.request.url);
