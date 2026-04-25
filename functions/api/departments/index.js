@@ -1,6 +1,7 @@
-import { json, requireUser } from '../../_utils.js';
-export async function onRequestGet(context) {
-  const user = await requireUser(context); if (!user) return json({ error: 'Chưa đăng nhập' }, 401);
-  const { results } = await context.env.DB.prepare('SELECT * FROM departments ORDER BY name').all();
-  return json({ departments: results });
+export async function onRequestGet({ env }) {
+  const { results } = await env.DB
+    .prepare('SELECT id, name, code FROM departments ORDER BY id')
+    .all();
+
+  return Response.json(results || []);
 }
