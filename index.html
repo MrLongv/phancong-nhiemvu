@@ -158,7 +158,11 @@
           <select id="searchDepartment"></select>
           <button class="btn" onclick="loadEmployees()">Tìm kiếm</button>
         </div>
-
+<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+  <input type="file" id="fileInput" accept=".csv" />
+  <button class="btn-light" onclick="importCSV()">📥 Import Excel (CSV)</button>
+  <button class="btn-light" onclick="exportCSV()">📤 Xuất báo cáo</button>
+</div>
         <table>
           <thead>
             <tr>
@@ -603,6 +607,73 @@ $('searchKeyword').addEventListener('keydown', function(e){
 });
 
 loadMe();
+  async function importCSV(){
+  const file = document.getElementById('fileInput').files[0];
+  if(!file){
+    alert('Chọn file trước');
+    return;
+  }
+
+  const text = await file.text();
+  const rows = text.split('\n').map(r => r.split(','));
+
+  // bỏ dòng header
+  rows.shift();
+
+  for(const row of rows){
+    if(!row[0]) continue;
+
+    const payload = {
+      emp_code: row[0],
+      full_name: row[1],
+      position: row[2],
+      department_id: row[3],
+      team_id: row[4],
+      manager_name: row[5],
+      status: row[6],
+      work_area: row[7],
+      main_tasks: row[8],
+      sub_tasks: row[9],
+      daily_tasks: row[10],
+      periodic_tasks: row[11],
+      related_docs: row[12]
+    };
+
+    await fetch('/api/employees', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+  }
+
+  alert('Import xong!');
+  loadEmployees();
+}
+  async function exportCSV(){
+  const res = await fetch('/api/employees');
+  const data = await res.json();
+
+  let csv = `MaNV,HoTen,Phong,Tổ,ChucVu,NhiemVuChinh\n`;
+
+  data.forEach(e => {
+    csv += [
+      e.emp_code,
+      e.full_name,
+      e.department_name,
+      e.team_name,
+      e.position,
+      (e.main_tasks || '').replace(/\n/g,' ')
+    ].join(',') + '\n';
+  });
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'bao_cao_nhan_su.csv';
+  a.click();
+}
 </script>
 </body>
 </html>
