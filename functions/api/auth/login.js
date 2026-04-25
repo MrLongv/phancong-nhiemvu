@@ -1,4 +1,4 @@
-import { json } from '../_utils.js';
+import { json } from '../../_utils.js';
 export async function onRequestPost(context) {
   const body = await context.request.json().catch(() => ({}));
   const { username, password } = body;
