@@ -1,0 +1,1 @@
+{"scripts":{"dev":"wrangler pages dev .","deploy":"wrangler pages deploy ."},"devDependencies":{"wrangler":"latest"}}
