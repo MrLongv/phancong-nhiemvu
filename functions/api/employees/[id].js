@@ -1,4 +1,4 @@
-import { json, requireUser, log } from '../_utils.js';
+import { json, requireUser, log } from '../../_utils.js';
 async function getEmployee(context, id){
   return context.env.DB.prepare(`SELECT e.*, d.name department_name, t.name team_name, a.work_area,a.main_tasks,a.sub_tasks,a.daily_tasks,a.periodic_tasks,a.related_docs
     FROM employees e LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN teams t ON t.id=e.team_id LEFT JOIN assignments a ON a.employee_id=e.id WHERE e.id=?`).bind(id).first();
