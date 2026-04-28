@@ -43,58 +43,54 @@
     .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
     .modal-box{background:white;width:min(850px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.25)}
     .modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:16px}
-   .detail-block{
-  background:#f8fafc;
-  border:1px solid #e2e8f0;
-  border-radius:12px;
-  padding:8px 10px;
-  margin:6px 0 10px;
-  line-height:1.4;
-}
 
-.detail-title{
-  font-size:14px;
-  margin:10px 0 6px;
-  color:#0f172a;
-  font-weight:600;
-}
+    .detail-block{
+      background:#f8fafc;
+      border:1px solid #e2e8f0;
+      border-radius:12px;
+      padding:8px 10px;
+      margin:6px 0 10px;
+      line-height:1.4;
+    }
 
-.task-list{
-  display:flex;
-  flex-direction:column;
-  gap:5px;
-}
+    .detail-title{
+      font-size:14px;
+      margin:10px 0 6px;
+      color:#0f172a;
+      font-weight:600;
+    }
 
-.task-item{
-  display:flex;
-  gap:8px;
-  align-items:flex-start;
-  padding:7px 9px;
-  border-radius:10px;
-  line-height:1.35;
-  border:1px solid #e2e8f0;
-}
+    .task-list{
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+    }
 
-.task-even{
-  background:#eff6ff;
-}
+    .task-item{
+      display:flex;
+      gap:8px;
+      align-items:flex-start;
+      padding:7px 9px;
+      border-radius:10px;
+      line-height:1.35;
+      border:1px solid #e2e8f0;
+    }
 
-.task-odd{
-  background:#f8fafc;
-}
+    .task-even{background:#eff6ff}
+    .task-odd{background:#f8fafc}
 
-.task-dot{
-  min-width:22px;
-  height:22px;
-  border-radius:999px;
-  background:#2563eb;
-  color:white;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:700;
-}
+    .task-dot{
+      min-width:22px;
+      height:22px;
+      border-radius:999px;
+      background:#2563eb;
+      color:white;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:700;
+    }
 
     @media(max-width:900px){
       .grid,.grid2,.searchbar{grid-template-columns:1fr}
@@ -190,10 +186,12 @@
         <div id="importTools" class="importbar">
           <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
           <button class="btn-light" onclick="importExcel()">📥 Import Excel</button>
+
           <label style="display:flex;align-items:center;gap:8px;width:auto;margin:0;font-weight:700;color:#334155">
-  <input type="checkbox" id="overwriteImport" style="width:auto">
-  Cho phép ghi đè nếu trùng mã NV
-</label>
+            <input type="checkbox" id="overwriteImport" style="width:auto">
+            Cho phép ghi đè nếu trùng mã NV
+          </label>
+
           <button class="btn-light" onclick="exportCSV()">📤 Xuất báo cáo</button>
           <div id="importResult"></div>
         </div>
@@ -325,10 +323,32 @@
     </div>
   </div>
 
+  <div id="overwriteModal" class="modal hidden">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-head">
+        <div>
+          <h2 style="margin:0">⚠️ Trùng mã nhân viên</h2>
+          <p id="overwriteText" class="muted" style="margin:8px 0 0"></p>
+        </div>
+      </div>
+
+      <div class="detail-block">
+        Nhân viên này đã tồn tại.<br>
+        Nếu tiếp tục, dữ liệu cũ sẽ bị ghi đè.
+      </div>
+
+      <div class="actions" style="justify-content:flex-end;margin-top:16px">
+        <button class="btn-light" onclick="cancelOverwrite()">Không ghi đè</button>
+        <button class="btn" onclick="confirmOverwrite()">Ghi đè</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 let currentUser = null;
 let departments = [];
 let teams = [];
+let pendingOverwritePayload = null;
 
 function $(id){ return document.getElementById(id); }
 
@@ -550,7 +570,6 @@ async function saveEmployee(){
   }
 
   try{
-    // 👉 chỉ check trùng khi thêm mới
     if(!payload.id){
       payload.overwrite = false;
     }
@@ -563,7 +582,6 @@ async function saveEmployee(){
 
     const data = await res.json().catch(() => ({}));
 
-    // 🔥 nếu trùng → mở popup
     if(data.skipped){
       openOverwriteModal(payload);
       return;
@@ -746,25 +764,24 @@ function parseImportRows(raw){
       emp_code: pick(obj, ['ma nv','manv','msnv','ma so','maso']),
       full_name: pick(obj, ['ho ten','hoten','ho va ten','full name']),
       position: pick(obj, ['chuc vu','chucvu','vi tri','vitri']),
-     department_id: pick(obj, [
-  'departmentid',
-  'phongid',
-  'phong id',
-  'phongban id',
-  'phong ban id',
-  'ma phong',
-  'maphong'
-]),
-
-team_id: pick(obj, [
-  'teamid',
-  'toid',
-  'to id',
-  'tobophan id',
-  'to bo phan id',
-  'ma to',
-  'mato'
-]),
+      department_id: pick(obj, [
+        'departmentid',
+        'phongid',
+        'phong id',
+        'phongban id',
+        'phong ban id',
+        'ma phong',
+        'maphong'
+      ]),
+      team_id: pick(obj, [
+        'teamid',
+        'toid',
+        'to id',
+        'tobophan id',
+        'to bo phan id',
+        'ma to',
+        'mato'
+      ]),
       manager_name: pick(obj, ['nguoi quan ly','nguoiquanly','quan ly','quanly']),
       status: pick(obj, ['trang thai','trangthai']) || 'dang_lam',
       work_area: pick(obj, ['khu vuc','khuvuc','khu vuc lam viec']),
@@ -920,14 +937,10 @@ function showDetail(e){
 function closeDetail(){
   $('detailModal').classList.add('hidden');
 }
+
 $('detailModal').addEventListener('click', function(e){
   if(e.target === this) closeDetail();
 });
-
-$('searchKeyword').addEventListener('keydown', function(e){
-  if(e.key === 'Enter') loadEmployees();
-});
-let pendingOverwritePayload = null;
 
 function openOverwriteModal(payload){
   pendingOverwritePayload = payload;
@@ -968,26 +981,11 @@ async function confirmOverwrite(){
   showTab('search');
   loadEmployees();
 }
-    <div id="overwriteModal" class="modal hidden">
-  <div class="modal-box" style="max-width:520px">
-    <div class="modal-head">
-      <div>
-        <h2 style="margin:0">⚠️ Trùng mã nhân viên</h2>
-        <p id="overwriteText" class="muted" style="margin:8px 0 0"></p>
-      </div>
-    </div>
 
-    <div class="detail-block">
-      Nhân viên này đã tồn tại.<br>
-      Nếu tiếp tục, dữ liệu cũ sẽ bị ghi đè.
-    </div>
+$('searchKeyword').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') loadEmployees();
+});
 
-    <div class="actions" style="justify-content:flex-end;margin-top:16px">
-      <button class="btn-light" onclick="cancelOverwrite()">Không ghi đè</button>
-      <button class="btn" onclick="confirmOverwrite()">Ghi đè</button>
-    </div>
-  </div>
-</div>
 loadMe();
 </script>
 </body>
