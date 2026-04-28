@@ -133,79 +133,83 @@ export async function onRequestPost({ request, env }) {
 }
 
 export async function onRequestPut({ request, env }) {
-  const data = await request.json();
+  try {
+    const data = await request.json();
 
-  const fullNameKd = removeVN(data.full_name);
+    if (!data.id) {
+      return Response.json({ error: 'Thiếu ID nhân viên' }, { status: 400 });
+    }
 
-  await env.DB.prepare(`
-    UPDATE employees SET
-      emp_code = ?,
-      full_name = ?,
-      full_name_kd = ?,
-      position = ?,
-      department_id = ?,
-      team_id = ?,
-      manager_name = ?,
-      status = ?,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).bind(
-    data.emp_code,
-    data.full_name,
-    fullNameKd,
-    data.position || '',
-    data.department_id || null,
-    data.team_id || null,
-    data.manager_name || '',
-    data.status || 'dang_lam',
-    data.id
-  ).run();
-
-  const existed = await env.DB.prepare(`
-    SELECT id FROM assignments WHERE employee_id = ? LIMIT 1
-  `).bind(data.id).first();
-
-  if (existed) {
-  if (!data.overwrite) {
-    return Response.json({
-      ok: true,
-      skipped: true,
-      message: 'Mã NV đã tồn tại'
-    });
-  }
-
-  data.id = existed.id;
-
-  await onRequestPut({
-    request: new Request(request.url, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-      headers: { 'Content-Type': 'application/json' }
-    }),
-    env
-  });
-
-  return Response.json({
-    ok: true,
-    updated: true,
-    id: existed.id
-  });
-}
-  else {
     await env.DB.prepare(`
-      INSERT INTO assignments
-      (employee_id, work_area, main_tasks, sub_tasks, daily_tasks, periodic_tasks, related_docs)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      UPDATE employees SET
+        emp_code = ?,
+        full_name = ?,
+        full_name_kd = ?,
+        position = ?,
+        department_id = ?,
+        team_id = ?,
+        manager_name = ?,
+        status = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
     `).bind(
-      data.id,
-      data.work_area || '',
-      data.main_tasks || '',
-      data.sub_tasks || '',
-      data.daily_tasks || '',
-      data.periodic_tasks || '',
-      data.related_docs || ''
+      data.emp_code || '',
+      data.full_name || '',
+      removeVN(data.full_name || ''),
+      data.position || '',
+      data.department_id || null,
+      data.team_id || null,
+      data.manager_name || '',
+      data.status || 'dang_lam',
+      data.id
     ).run();
-  }
 
-  return Response.json({ ok: true });
+    const existed = await env.DB.prepare(`
+      SELECT id FROM assignments WHERE employee_id = ? LIMIT 1
+    `).bind(data.id).first();
+
+    if (existed) {
+      await env.DB.prepare(`
+        UPDATE assignments SET
+          work_area = ?,
+          main_tasks = ?,
+          sub_tasks = ?,
+          daily_tasks = ?,
+          periodic_tasks = ?,
+          related_docs = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE employee_id = ?
+      `).bind(
+        data.work_area || '',
+        data.main_tasks || '',
+        data.sub_tasks || '',
+        data.daily_tasks || '',
+        data.periodic_tasks || '',
+        data.related_docs || '',
+        data.id
+      ).run();
+    } else {
+      await env.DB.prepare(`
+        INSERT INTO assignments
+        (employee_id, work_area, main_tasks, sub_tasks, daily_tasks, periodic_tasks, related_docs)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        data.id,
+        data.work_area || '',
+        data.main_tasks || '',
+        data.sub_tasks || '',
+        data.daily_tasks || '',
+        data.periodic_tasks || '',
+        data.related_docs || ''
+      ).run();
+    }
+
+    return Response.json({ ok: true, updated: true, id: data.id });
+
+  } catch (err) {
+    return Response.json({
+      error: 'Lỗi cập nhật nhân viên',
+      detail: String(err && err.message ? err.message : err)
+    }, { status: 500 });
+  }
 }
