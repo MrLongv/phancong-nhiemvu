@@ -27,6 +27,7 @@
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .searchbar{display:grid;grid-template-columns:1.3fr .65fr .65fr;gap:12px;margin:18px 0}
     .importbar{margin:12px 0 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    #importResult{width:100%;margin-top:10px;font-size:14px;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px;display:none}
     table{width:100%;border-collapse:collapse;margin-top:12px}
     th,td{border-bottom:1px solid #e2e8f0;padding:12px;text-align:left;font-size:14px}
     th{font-size:12px;color:#64748b}
@@ -145,6 +146,7 @@
           <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
           <button class="btn-light" onclick="importExcel()">📥 Import Excel</button>
           <button class="btn-light" onclick="exportCSV()">📤 Xuất báo cáo</button>
+          <div id="importResult"></div>
         </div>
 
         <table>
@@ -534,86 +536,179 @@ async function importExcel(){
     return;
   }
 
-  const ext = file.name.split('.').pop().toLowerCase();
-  let rows = [];
+  showImportResult('⏳ Đang đọc file...');
 
   try{
+    const ext = file.name.split('.').pop().toLowerCase();
+    let raw = [];
+
     if(ext === 'xlsx' || ext === 'xls'){
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
       const sheet = workbook.Sheets['Nhap_NhanSu'] || workbook.Sheets[workbook.SheetNames[0]];
-      rows = XLSX.utils.sheet_to_json(sheet, {
-  defval: '',
-  raw: false,
-  range: 3   // 🔥 BỎ QUA 3 DÒNG ĐẦU
-});
+      raw = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        defval: '',
+        raw: false
+      });
     }else if(ext === 'csv'){
       const text = await readTextSmart(file);
       const workbook = XLSX.read(text, { type: 'string' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      rows = XLSX.utils.sheet_to_json(sheet, {
-  defval: '',
-  raw: false,
-  range: 3   // 🔥 BỎ QUA 3 DÒNG ĐẦU
-});
+      raw = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        defval: '',
+        raw: false
+      });
     }else{
-      alert('Chỉ hỗ trợ .xlsx, .xls hoặc .csv');
+      showImportResult('❌ Chỉ hỗ trợ .xlsx, .xls hoặc .csv');
       return;
     }
 
-    let count = 0;
-    let fail = 0;
+    const parsed = parseImportRows(raw);
 
-    for(const row of rows){
-      const payload = mapImportRow(row);
+    if(parsed.rows.length === 0){
+      showImportResult('❌ Không tìm thấy dòng dữ liệu hợp lệ. Kiểm tra lại dòng tiêu đề có Mã NV và Họ tên.');
+      return;
+    }
+
+    let ok = 0;
+    let fail = 0;
+    const errors = [];
+
+    showImportResult(`⏳ Đang import ${parsed.rows.length} dòng...`);
+
+    for(let i = 0; i < parsed.rows.length; i++){
+      const payload = parsed.rows[i];
 
       if(!payload.emp_code || !payload.full_name){
+        fail++;
+        errors.push(`Dòng ${payload.__rowNum}: thiếu Mã NV hoặc Họ tên`);
         continue;
       }
 
-      const res = await fetch('/api/employees', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
+      try{
+        const res = await fetch('/api/employees', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
 
-      if(res.ok) count++;
-      else fail++;
+        if(res.ok){
+          ok++;
+        }else{
+          fail++;
+          const err = await res.json().catch(() => ({}));
+          errors.push(`Dòng ${payload.__rowNum}: ${err.error || err.message || 'Không lưu được'}`);
+        }
+      }catch(e){
+        fail++;
+        errors.push(`Dòng ${payload.__rowNum}: ${e.message}`);
+      }
+
+      if((i + 1) % 10 === 0 || i === parsed.rows.length - 1){
+        showImportResult(`⏳ Đang import ${i + 1}/${parsed.rows.length} dòng...`);
+      }
     }
 
-    alert(`Import xong ${count} nhân viên${fail ? ', lỗi ' + fail + ' dòng' : ''}`);
+    showImportResult(`
+      ✅ Import xong<br>
+      Thành công: <b>${ok}</b><br>
+      Lỗi: <b>${fail}</b>
+      ${errors.length ? `<br><br><b>Chi tiết lỗi:</b><br>${errors.slice(0,30).map(escapeHtml).join('<br>')}` : ''}
+    `);
+
     loadEmployees();
 
   }catch(err){
-    alert('Lỗi import: ' + err.message);
+    showImportResult('❌ Lỗi import: ' + escapeHtml(err.message));
   }
 }
 
-function mapImportRow(row){
-  const get = (...names) => {
-    for(const name of names){
-      if(row[name] !== undefined && row[name] !== null && String(row[name]).trim() !== ''){
-        return String(row[name]).trim();
-      }
-    }
-    return '';
-  };
+function showImportResult(html){
+  $('importResult').style.display = 'block';
+  $('importResult').innerHTML = html;
+}
 
-  return {
-    emp_code: get('MaNV','Mã NV','MSNV','MaSo','Mã số'),
-    full_name: get('HoTen','Họ tên','Ho_Ten','FullName'),
-    position: get('ChucVu','Chức vụ','ViTri','Vị trí'),
-    department_id: get('DepartmentID','PhongID','Phòng ID','MaPhong','Mã phòng'),
-    team_id: get('TeamID','ToID','Tổ ID','MaTo','Mã tổ'),
-    manager_name: get('NguoiQuanLy','Người quản lý','QuanLy','Quản lý'),
-    status: get('TrangThai','Trạng thái') || 'dang_lam',
-    work_area: get('KhuVuc','Khu vực','KhuVucLamViec'),
-    main_tasks: get('NhiemVuChinh','Nhiệm vụ chính'),
-    sub_tasks: get('NhiemVuPhu','Nhiệm vụ phụ'),
-    daily_tasks: get('CongViecHangNgay','Công việc hằng ngày'),
-    periodic_tasks: get('CongViecDinhKy','Công việc định kỳ'),
-    related_docs: get('TaiLieuLienQuan','Tài liệu liên quan')
-  };
+function parseImportRows(raw){
+  let headerIndex = -1;
+
+  for(let i = 0; i < raw.length; i++){
+    const row = raw[i] || [];
+    const normalized = row.map(x => normalizeHeader(x));
+    const rowText = normalized.join('|');
+
+    const hasCode = rowText.includes('ma nv') || rowText.includes('manv') || rowText.includes('msnv') || rowText.includes('ma so');
+    const hasName = rowText.includes('ho ten') || rowText.includes('hoten') || rowText.includes('ho va ten');
+
+    if(hasCode && hasName){
+      headerIndex = i;
+      break;
+    }
+  }
+
+  if(headerIndex === -1){
+    return { rows: [], error: 'Không tìm thấy dòng tiêu đề' };
+  }
+
+  const headers = raw[headerIndex].map(h => normalizeHeader(h));
+  const rows = [];
+
+  for(let r = headerIndex + 1; r < raw.length; r++){
+    const line = raw[r];
+
+    if(!line || line.every(c => String(c).trim() === '')) continue;
+
+    const obj = {};
+    headers.forEach((h, idx) => {
+      if(h) obj[h] = String(line[idx] || '').trim();
+    });
+
+    const payload = {
+      __rowNum: r + 1,
+      emp_code: pick(obj, ['ma nv','manv','msnv','ma so','maso']),
+      full_name: pick(obj, ['ho ten','hoten','ho va ten','full name']),
+      position: pick(obj, ['chuc vu','chucvu','vi tri','vitri']),
+      department_id: pick(obj, ['departmentid','phongid','phong id','ma phong','maphong']),
+      team_id: pick(obj, ['teamid','toid','to id','ma to','mato']),
+      manager_name: pick(obj, ['nguoi quan ly','nguoiquanly','quan ly','quanly']),
+      status: pick(obj, ['trang thai','trangthai']) || 'dang_lam',
+      work_area: pick(obj, ['khu vuc','khuvuc','khu vuc lam viec']),
+      main_tasks: pick(obj, ['nhiem vu chinh','nhiemvuchinh']),
+      sub_tasks: pick(obj, ['nhiem vu phu','nhiemvuphu']),
+      daily_tasks: pick(obj, ['cong viec hang ngay','congviechangngay']),
+      periodic_tasks: pick(obj, ['cong viec dinh ky','congviecdinhky']),
+      related_docs: pick(obj, ['tai lieu lien quan','tailieulienquan'])
+    };
+
+    if(payload.emp_code || payload.full_name){
+      rows.push(payload);
+    }
+  }
+
+  return { rows, headerIndex };
+}
+
+function normalizeHeader(v){
+  return String(v || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .replace(/[_\-\.]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+function pick(obj, keys){
+  for(const k of keys){
+    const nk = normalizeHeader(k);
+    if(obj[nk] !== undefined && obj[nk] !== ''){
+      return obj[nk];
+    }
+  }
+  return '';
 }
 
 function readTextSmart(file){
