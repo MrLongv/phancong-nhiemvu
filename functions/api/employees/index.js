@@ -1,3 +1,13 @@
+function removeVN(str = '') {
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .trim();
+}
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
 
@@ -25,8 +35,18 @@ export async function onRequestGet({ request, env }) {
   const params = [];
 
   if (q) {
-    sql += ` AND (e.full_name LIKE ? OR e.emp_code LIKE ?)`;
-    params.push(`%${q}%`, `%${q}%`);
+    const qRaw = String(q).trim().toLowerCase();
+    const qKd = removeVN(q);
+
+    sql += `
+      AND (
+        LOWER(e.emp_code) LIKE ?
+        OR LOWER(e.full_name) LIKE ?
+        OR LOWER(COALESCE(e.full_name_kd, '')) LIKE ?
+      )
+    `;
+
+    params.push(`%${qRaw}%`, `%${qRaw}%`, `%${qKd}%`);
   }
 
   if (departmentId) {
@@ -37,19 +57,36 @@ export async function onRequestGet({ request, env }) {
   sql += ` ORDER BY e.id DESC`;
 
   const { results } = await env.DB.prepare(sql).bind(...params).all();
+
   return Response.json(results || []);
 }
 
 export async function onRequestPost({ request, env }) {
   const data = await request.json();
 
+  const fullNameKd = removeVN(data.full_name);
+
+  const existed = await env.DB.prepare(`
+    SELECT id FROM employees WHERE emp_code = ? LIMIT 1
+  `).bind(data.emp_code).first();
+
+  if (existed) {
+    data.id = existed.id;
+    return onRequestPut({ request: new Request(request.url, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' }
+    }), env });
+  }
+
   const result = await env.DB.prepare(`
     INSERT INTO employees 
-    (emp_code, full_name, position, department_id, team_id, manager_name, status, note)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    (emp_code, full_name, full_name_kd, position, department_id, team_id, manager_name, status, note)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     data.emp_code,
     data.full_name,
+    fullNameKd,
     data.position || '',
     data.department_id || null,
     data.team_id || null,
@@ -80,10 +117,13 @@ export async function onRequestPost({ request, env }) {
 export async function onRequestPut({ request, env }) {
   const data = await request.json();
 
+  const fullNameKd = removeVN(data.full_name);
+
   await env.DB.prepare(`
     UPDATE employees SET
       emp_code = ?,
       full_name = ?,
+      full_name_kd = ?,
       position = ?,
       department_id = ?,
       team_id = ?,
@@ -94,6 +134,7 @@ export async function onRequestPut({ request, env }) {
   `).bind(
     data.emp_code,
     data.full_name,
+    fullNameKd,
     data.position || '',
     data.department_id || null,
     data.team_id || null,
