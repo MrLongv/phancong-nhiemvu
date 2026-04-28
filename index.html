@@ -588,9 +588,9 @@ async function saveEmployee(){
     }
 
     if(!res.ok){
-      alert(data.error || data.message || 'Không lưu được');
-      return;
-    }
+  alert(data.error || data.message || data.detail || 'Không lưu được');
+  return;
+}
 
     alert('Đã lưu hồ sơ');
     clearForm();
