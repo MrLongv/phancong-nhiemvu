@@ -14,7 +14,43 @@ export async function onRequestGet({ request, env }) {
   const q = url.searchParams.get('q');
   const departmentId = url.searchParams.get('department_id');
 
-  let sql = `
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '100', 10)));
+  const offset = (page - 1) * limit;
+
+  let where = ` WHERE 1=1 `;
+  const params = [];
+
+  if (q) {
+    const qRaw = String(q).trim().toLowerCase();
+    const qKd = removeVN(q);
+
+    where += `
+      AND (
+        LOWER(e.emp_code) LIKE ?
+        OR LOWER(e.full_name) LIKE ?
+        OR LOWER(COALESCE(e.full_name_kd, '')) LIKE ?
+      )
+    `;
+
+    params.push(`%${qRaw}%`, `%${qRaw}%`, `%${qKd}%`);
+  }
+
+  if (departmentId) {
+    where += ` AND e.department_id = ? `;
+    params.push(departmentId);
+  }
+
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM employees e
+    ${where}
+  `;
+
+  const countRow = await env.DB.prepare(countSql).bind(...params).first();
+  const total = countRow?.total || 0;
+
+  const dataSql = `
     SELECT 
       e.*,
       d.name AS department_name,
@@ -29,36 +65,24 @@ export async function onRequestGet({ request, env }) {
     LEFT JOIN departments d ON e.department_id = d.id
     LEFT JOIN teams t ON e.team_id = t.id
     LEFT JOIN assignments a ON a.employee_id = e.id
-    WHERE 1=1
+    ${where}
+    ORDER BY e.id DESC
+    LIMIT ?
+    OFFSET ?
   `;
 
-  const params = [];
+  const { results } = await env.DB
+    .prepare(dataSql)
+    .bind(...params, limit, offset)
+    .all();
 
-  if (q) {
-    const qRaw = String(q).trim().toLowerCase();
-    const qKd = removeVN(q);
-
-    sql += `
-      AND (
-        LOWER(e.emp_code) LIKE ?
-        OR LOWER(e.full_name) LIKE ?
-        OR LOWER(COALESCE(e.full_name_kd, '')) LIKE ?
-      )
-    `;
-
-    params.push(`%${qRaw}%`, `%${qRaw}%`, `%${qKd}%`);
-  }
-
-  if (departmentId) {
-    sql += ` AND e.department_id = ?`;
-    params.push(departmentId);
-  }
-
-  sql += ` ORDER BY e.id DESC`;
-
-  const { results } = await env.DB.prepare(sql).bind(...params).all();
-
-  return Response.json(results || []);
+  return Response.json({
+    rows: results || [],
+    total,
+    page,
+    limit,
+    total_pages: Math.max(1, Math.ceil(total / limit))
+  });
 }
 
 export async function onRequestPost({ request, env }) {
