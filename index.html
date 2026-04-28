@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Phân công nhiệm vụ nhân viên Việt Hồng</title>
+  <title>Phân công nhiệm vụ nhân sự</title>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -43,53 +43,34 @@
     .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
     .modal-box{background:white;width:min(850px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.25)}
     .modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:16px}
-
-    .detail-block{
-      background:#f8fafc;
-      border:1px solid #e2e8f0;
-      border-radius:12px;
-      padding:8px 10px;
-      margin:6px 0 10px;
-      line-height:1.4;
-    }
-
-    .detail-title{
-      font-size:14px;
-      margin:10px 0 6px;
-      color:#0f172a;
-      font-weight:600;
-    }
-
-    .task-list{
-      display:flex;
-      flex-direction:column;
-      gap:5px;
-    }
-
-    .task-item{
-      display:flex;
-      gap:8px;
-      align-items:flex-start;
-      padding:7px 9px;
-      border-radius:10px;
-      line-height:1.35;
-      border:1px solid #e2e8f0;
-    }
-
+    .detail-block{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:8px 10px;margin:6px 0 10px;line-height:1.4}
+    .detail-title{font-size:14px;margin:10px 0 6px;color:#0f172a;font-weight:600}
+    .task-list{display:flex;flex-direction:column;gap:5px}
+    .task-item{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-radius:10px;line-height:1.35;border:1px solid #e2e8f0}
     .task-even{background:#eff6ff}
     .task-odd{background:#f8fafc}
+    .task-dot{min-width:22px;height:22px;border-radius:999px;background:#2563eb;color:white;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
 
-    .task-dot{
-      min-width:22px;
-      height:22px;
-      border-radius:999px;
-      background:#2563eb;
-      color:white;
-      display:inline-flex;
+    .pagination{
+      display:flex;
+      justify-content:space-between;
       align-items:center;
-      justify-content:center;
-      font-size:12px;
+      gap:10px;
+      margin:14px 0 0;
+      flex-wrap:wrap;
+    }
+    .pagination-info{
+      color:#475569;
       font-weight:700;
+      font-size:14px;
+    }
+    .pagination-actions{
+      display:flex;
+      gap:8px;
+    }
+    .pagination-actions button:disabled{
+      opacity:.45;
+      cursor:not-allowed;
     }
 
     @media(max-width:900px){
@@ -105,6 +86,9 @@
       .searchbar{grid-template-columns:1fr;gap:10px}
       .searchbar input,.searchbar select,.searchbar button{height:48px;font-size:16px}
       .importbar input,.importbar button{width:100%}
+      .pagination{align-items:stretch}
+      .pagination-actions{width:100%}
+      .pagination-actions button{flex:1}
 
       table,thead,tbody,tr,th,td{display:block}
       thead{display:none}
@@ -151,7 +135,7 @@
 
   <div id="appPage" class="hidden">
     <header>
-      <div>📋 Phân công nhiệm vụ nhân viên</div>
+      <div>📋 Phân công nhiệm vụ nhân sự</div>
       <div class="right">
         <span id="userInfo"></span>
         <button class="btn-light" onclick="logout()">Đăng xuất</button>
@@ -180,7 +164,7 @@
             placeholder="Nhập mã số hoặc họ tên..." 
           />
           <select id="searchDepartment"></select>
-          <button class="btn" onclick="loadEmployees()">Tìm kiếm</button>
+          <button class="btn" onclick="loadEmployees(1)">Tìm kiếm</button>
         </div>
 
         <div id="importTools" class="importbar">
@@ -209,6 +193,14 @@
           </thead>
           <tbody id="employeeTbody"></tbody>
         </table>
+
+        <div class="pagination">
+          <div id="paginationInfo" class="pagination-info">Hiển thị 0 nhân viên</div>
+          <div class="pagination-actions">
+            <button id="prevPageBtn" class="btn-light" onclick="prevPage()">← Trước</button>
+            <button id="nextPageBtn" class="btn-light" onclick="nextPage()">Sau →</button>
+          </div>
+        </div>
       </section>
 
       <section id="formSection" class="card hidden">
@@ -350,6 +342,11 @@ let departments = [];
 let teams = [];
 let pendingOverwritePayload = null;
 
+let currentPage = 1;
+let pageLimit = 100;
+let totalPages = 1;
+let totalEmployees = 0;
+
 function $(id){ return document.getElementById(id); }
 
 function canEdit(){
@@ -430,7 +427,7 @@ function showTab(tab){
 
 async function initData(){
   await loadDepartments();
-  await loadEmployees();
+  await loadEmployees(1);
 }
 
 async function loadDepartments(){
@@ -458,29 +455,49 @@ async function loadTeams(departmentId){
     teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 }
 
-async function loadEmployees(){
+async function loadEmployees(page = currentPage){
+  currentPage = page;
+
   const keyword = $('searchKeyword').value.trim();
   const departmentId = $('searchDepartment').value;
 
   const params = new URLSearchParams();
   if(keyword) params.set('q', keyword);
   if(departmentId) params.set('department_id', departmentId);
+  params.set('page', currentPage);
+  params.set('limit', pageLimit);
 
   try{
     const res = await fetch('/api/employees?' + params.toString());
     const data = await res.json();
 
-    if(!Array.isArray(data)){
+    let rows = [];
+
+    if(Array.isArray(data)){
+      rows = data;
+      totalEmployees = data.length;
+      totalPages = 1;
+      currentPage = 1;
+    }else{
+      rows = data.rows || [];
+      totalEmployees = data.total || 0;
+      totalPages = data.total_pages || 1;
+      currentPage = data.page || currentPage;
+    }
+
+    updatePaginationInfo(rows.length);
+
+    if(!Array.isArray(rows)){
       $('employeeTbody').innerHTML = `<tr><td colspan="6">Chưa có dữ liệu hoặc API chưa đúng.</td></tr>`;
       return;
     }
 
-    if(data.length === 0){
+    if(rows.length === 0){
       $('employeeTbody').innerHTML = `<tr><td colspan="6">Chưa có nhân viên.</td></tr>`;
       return;
     }
 
-    $('employeeTbody').innerHTML = data.map(e => `
+    $('employeeTbody').innerHTML = rows.map(e => `
       <tr>
         <td>${escapeHtml(e.emp_code || '')}</td>
         <td>
@@ -503,6 +520,29 @@ async function loadEmployees(){
 
   }catch(err){
     $('employeeTbody').innerHTML = `<tr><td colspan="6">Lỗi tải nhân viên: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function updatePaginationInfo(currentCount){
+  const start = totalEmployees === 0 ? 0 : ((currentPage - 1) * pageLimit + 1);
+  const end = Math.min(currentPage * pageLimit, totalEmployees);
+
+  $('paginationInfo').textContent =
+    `Hiển thị ${start}-${end} / ${totalEmployees} nhân viên • Trang ${currentPage}/${totalPages}`;
+
+  $('prevPageBtn').disabled = currentPage <= 1;
+  $('nextPageBtn').disabled = currentPage >= totalPages;
+}
+
+function prevPage(){
+  if(currentPage > 1){
+    loadEmployees(currentPage - 1);
+  }
+}
+
+function nextPage(){
+  if(currentPage < totalPages){
+    loadEmployees(currentPage + 1);
   }
 }
 
@@ -588,14 +628,14 @@ async function saveEmployee(){
     }
 
     if(!res.ok){
-  alert(data.error || data.message || data.detail || 'Không lưu được');
-  return;
-}
+      alert(data.error || data.message || data.detail || 'Không lưu được');
+      return;
+    }
 
     alert('Đã lưu hồ sơ');
     clearForm();
     showTab('search');
-    loadEmployees();
+    loadEmployees(1);
 
   }catch(err){
     alert('Lỗi lưu hồ sơ: ' + err.message);
@@ -713,7 +753,7 @@ async function importExcel(){
       ${errors.length ? `<br><br><b>Chi tiết:</b><br>${errors.slice(0,50).map(escapeHtml).join('<br>')}` : ''}
     `);
 
-    loadEmployees();
+    loadEmployees(1);
 
   }catch(err){
     showImportResult('❌ Lỗi import: ' + escapeHtml(err.message));
@@ -764,24 +804,8 @@ function parseImportRows(raw){
       emp_code: pick(obj, ['ma nv','manv','msnv','ma so','maso']),
       full_name: pick(obj, ['ho ten','hoten','ho va ten','full name']),
       position: pick(obj, ['chuc vu','chucvu','vi tri','vitri']),
-      department_id: pick(obj, [
-        'departmentid',
-        'phongid',
-        'phong id',
-        'phongban id',
-        'phong ban id',
-        'ma phong',
-        'maphong'
-      ]),
-      team_id: pick(obj, [
-        'teamid',
-        'toid',
-        'to id',
-        'tobophan id',
-        'to bo phan id',
-        'ma to',
-        'mato'
-      ]),
+      department_id: pick(obj, ['departmentid','phongid','phong id','phongban id','phong ban id','ma phong','maphong']),
+      team_id: pick(obj, ['teamid','toid','to id','tobophan id','to bo phan id','ma to','mato']),
       manager_name: pick(obj, ['nguoi quan ly','nguoiquanly','quan ly','quanly']),
       status: pick(obj, ['trang thai','trangthai']) || 'dang_lam',
       work_area: pick(obj, ['khu vuc','khuvuc','khu vuc lam viec']),
@@ -835,7 +859,9 @@ async function exportCSV(){
   const res = await fetch('/api/employees');
   const data = await res.json();
 
-  if(!Array.isArray(data)){
+  const rows = Array.isArray(data) ? data : (data.rows || []);
+
+  if(!Array.isArray(rows)){
     alert('Không xuất được báo cáo');
     return;
   }
@@ -847,7 +873,7 @@ async function exportCSV(){
 
   const lines = [headers.join(',')];
 
-  data.forEach(e => {
+  rows.forEach(e => {
     lines.push([
       e.emp_code,
       e.full_name,
@@ -970,7 +996,7 @@ async function confirmOverwrite(){
   const data = await res.json().catch(()=>({}));
 
   if(!res.ok){
-    alert(data.error || data.message || 'Không ghi đè được');
+    alert(data.error || data.message || data.detail || 'Không ghi đè được');
     return;
   }
 
@@ -979,11 +1005,11 @@ async function confirmOverwrite(){
   pendingOverwritePayload = null;
   clearForm();
   showTab('search');
-  loadEmployees();
+  loadEmployees(1);
 }
 
 $('searchKeyword').addEventListener('keydown', function(e){
-  if(e.key === 'Enter') loadEmployees();
+  if(e.key === 'Enter') loadEmployees(1);
 });
 
 loadMe();
