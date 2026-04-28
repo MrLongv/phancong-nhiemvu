@@ -71,13 +71,31 @@ export async function onRequestPost({ request, env }) {
   `).bind(data.emp_code).first();
 
   if (existed) {
-    data.id = existed.id;
-    return onRequestPut({ request: new Request(request.url, {
+  if (!data.overwrite) {
+    return Response.json({
+      ok: true,
+      skipped: true,
+      message: 'Mã NV đã tồn tại, bỏ qua vì không cho phép ghi đè'
+    });
+  }
+
+  data.id = existed.id;
+
+  await onRequestPut({
+    request: new Request(request.url, {
       method: 'PUT',
       body: JSON.stringify(data),
       headers: { 'Content-Type': 'application/json' }
-    }), env });
-  }
+    }),
+    env
+  });
+
+  return Response.json({
+    ok: true,
+    updated: true,
+    id: existed.id
+  });
+}
 
   const result = await env.DB.prepare(`
     INSERT INTO employees 
