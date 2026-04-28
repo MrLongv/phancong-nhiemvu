@@ -190,6 +190,10 @@
         <div id="importTools" class="importbar">
           <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
           <button class="btn-light" onclick="importExcel()">📥 Import Excel</button>
+          <label style="display:flex;align-items:center;gap:8px;width:auto;margin:0;font-weight:700;color:#334155">
+  <input type="checkbox" id="overwriteImport" style="width:auto">
+  Cho phép ghi đè nếu trùng mã NV
+</label>
           <button class="btn-light" onclick="exportCSV()">📤 Xuất báo cáo</button>
           <div id="importResult"></div>
         </div>
@@ -581,6 +585,8 @@ async function importExcel(){
     return;
   }
 
+  const allowOverwrite = $('overwriteImport') && $('overwriteImport').checked;
+
   showImportResult('⏳ Đang đọc file...');
 
   try{
@@ -617,7 +623,9 @@ async function importExcel(){
       return;
     }
 
-    let ok = 0;
+    let inserted = 0;
+    let updated = 0;
+    let skipped = 0;
     let fail = 0;
     const errors = [];
 
@@ -632,6 +640,8 @@ async function importExcel(){
         continue;
       }
 
+      payload.overwrite = allowOverwrite;
+
       try{
         const res = await fetch('/api/employees', {
           method:'POST',
@@ -639,12 +649,21 @@ async function importExcel(){
           body: JSON.stringify(payload)
         });
 
+        const result = await res.json().catch(() => ({}));
+
         if(res.ok){
-          ok++;
+          if(result.skipped){
+            skipped++;
+            errors.push(`Dòng ${payload.__rowNum}: ⚠️ Bỏ qua vì trùng mã NV ${payload.emp_code}`);
+          }else if(result.updated){
+            updated++;
+            errors.push(`Dòng ${payload.__rowNum}: 🔄 Đã ghi đè mã NV ${payload.emp_code}`);
+          }else{
+            inserted++;
+          }
         }else{
           fail++;
-          const err = await res.json().catch(() => ({}));
-          errors.push(`Dòng ${payload.__rowNum}: ${err.error || err.message || 'Không lưu được'}`);
+          errors.push(`Dòng ${payload.__rowNum}: ${result.error || result.message || 'Không lưu được'}`);
         }
       }catch(e){
         fail++;
@@ -658,9 +677,11 @@ async function importExcel(){
 
     showImportResult(`
       ✅ Import xong<br>
-      Thành công: <b>${ok}</b><br>
+      Thêm mới: <b>${inserted}</b><br>
+      Ghi đè: <b>${updated}</b><br>
+      Bỏ qua trùng: <b>${skipped}</b><br>
       Lỗi: <b>${fail}</b>
-      ${errors.length ? `<br><br><b>Chi tiết lỗi:</b><br>${errors.slice(0,30).map(escapeHtml).join('<br>')}` : ''}
+      ${errors.length ? `<br><br><b>Chi tiết:</b><br>${errors.slice(0,50).map(escapeHtml).join('<br>')}` : ''}
     `);
 
     loadEmployees();
