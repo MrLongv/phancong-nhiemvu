@@ -550,6 +550,11 @@ async function saveEmployee(){
   }
 
   try{
+    // 👉 chỉ check trùng khi thêm mới
+    if(!payload.id){
+      payload.overwrite = false;
+    }
+
     const res = await fetch('/api/employees', {
       method: payload.id ? 'PUT' : 'POST',
       headers:{'Content-Type':'application/json'},
@@ -557,6 +562,12 @@ async function saveEmployee(){
     });
 
     const data = await res.json().catch(() => ({}));
+
+    // 🔥 nếu trùng → mở popup
+    if(data.skipped){
+      openOverwriteModal(payload);
+      return;
+    }
 
     if(!res.ok){
       alert(data.error || data.message || 'Không lưu được');
@@ -916,8 +927,68 @@ $('detailModal').addEventListener('click', function(e){
 $('searchKeyword').addEventListener('keydown', function(e){
   if(e.key === 'Enter') loadEmployees();
 });
+let pendingOverwritePayload = null;
 
+function openOverwriteModal(payload){
+  pendingOverwritePayload = payload;
+  $('overwriteText').textContent = `Mã NV ${payload.emp_code} đã tồn tại trong hệ thống.`;
+  $('overwriteModal').classList.remove('hidden');
+}
+
+function cancelOverwrite(){
+  pendingOverwritePayload = null;
+  $('overwriteModal').classList.add('hidden');
+}
+
+async function confirmOverwrite(){
+  if(!pendingOverwritePayload) return;
+
+  const payload = pendingOverwritePayload;
+  payload.overwrite = true;
+
+  $('overwriteModal').classList.add('hidden');
+
+  const res = await fetch('/api/employees', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json().catch(()=>({}));
+
+  if(!res.ok){
+    alert(data.error || data.message || 'Không ghi đè được');
+    return;
+  }
+
+  alert('Đã ghi đè dữ liệu');
+
+  pendingOverwritePayload = null;
+  clearForm();
+  showTab('search');
+  loadEmployees();
+}
 loadMe();
 </script>
+  <div id="overwriteModal" class="modal hidden">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-head">
+      <div>
+        <h2 style="margin:0">⚠️ Trùng mã nhân viên</h2>
+        <p id="overwriteText" class="muted" style="margin:8px 0 0"></p>
+      </div>
+    </div>
+
+    <div class="detail-block">
+      Nhân viên này đã tồn tại.<br>
+      Nếu tiếp tục, dữ liệu cũ sẽ bị ghi đè.
+    </div>
+
+    <div class="actions" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn-light" onclick="cancelOverwrite()">Không ghi đè</button>
+      <button class="btn" onclick="confirmOverwrite()">Ghi đè</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
