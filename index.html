@@ -669,8 +669,25 @@ function parseImportRows(raw){
       emp_code: pick(obj, ['ma nv','manv','msnv','ma so','maso']),
       full_name: pick(obj, ['ho ten','hoten','ho va ten','full name']),
       position: pick(obj, ['chuc vu','chucvu','vi tri','vitri']),
-      department_id: pick(obj, ['departmentid','phongid','phong id','ma phong','maphong']),
-      team_id: pick(obj, ['teamid','toid','to id','ma to','mato']),
+     department_id: pick(obj, [
+  'departmentid',
+  'phongid',
+  'phong id',
+  'phongban id',
+  'phong ban id',
+  'ma phong',
+  'maphong'
+]),
+
+team_id: pick(obj, [
+  'teamid',
+  'toid',
+  'to id',
+  'tobophan id',
+  'to bo phan id',
+  'ma to',
+  'mato'
+]),
       manager_name: pick(obj, ['nguoi quan ly','nguoiquanly','quan ly','quanly']),
       status: pick(obj, ['trang thai','trangthai']) || 'dang_lam',
       work_area: pick(obj, ['khu vuc','khuvuc','khu vuc lam viec']),
