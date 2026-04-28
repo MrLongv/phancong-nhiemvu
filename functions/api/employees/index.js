@@ -166,26 +166,32 @@ export async function onRequestPut({ request, env }) {
   `).bind(data.id).first();
 
   if (existed) {
-    await env.DB.prepare(`
-      UPDATE assignments SET
-        work_area = ?,
-        main_tasks = ?,
-        sub_tasks = ?,
-        daily_tasks = ?,
-        periodic_tasks = ?,
-        related_docs = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE employee_id = ?
-    `).bind(
-      data.work_area || '',
-      data.main_tasks || '',
-      data.sub_tasks || '',
-      data.daily_tasks || '',
-      data.periodic_tasks || '',
-      data.related_docs || '',
-      data.id
-    ).run();
-  } else {
+  if (!data.overwrite) {
+    return Response.json({
+      ok: true,
+      skipped: true,
+      message: 'Mã NV đã tồn tại'
+    });
+  }
+
+  data.id = existed.id;
+
+  await onRequestPut({
+    request: new Request(request.url, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' }
+    }),
+    env
+  });
+
+  return Response.json({
+    ok: true,
+    updated: true,
+    id: existed.id
+  });
+}
+  else {
     await env.DB.prepare(`
       INSERT INTO assignments
       (employee_id, work_area, main_tasks, sub_tasks, daily_tasks, periodic_tasks, related_docs)
